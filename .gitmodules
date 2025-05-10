@@ -1,0 +1,3 @@
+[submodule "k8s-checkpoint-access"]
+	path = k8s-checkpoint-access
+	url = /absolute/path/to/local/repo
