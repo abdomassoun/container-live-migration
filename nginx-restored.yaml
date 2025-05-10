@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+    name: nginx-restored
+    namespace: default
+    labels:
+     app: test
+spec:
+    containers:
+    - name: nginx
+      image: localhost/nginx-restored
+      imagePullPolicy: Never
+      ports:
+      - containerPort: 80
+    nodeSelector:
+      kubernetes.io/hostname: worker-node2
+    shareProcessNamespace: true
