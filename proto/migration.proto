@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package migration;
+
+option go_package = "container-migration/pb";
+
+// Migration coordination service
+service MigrationService {
+  // Target node requests checkpointing a pod
+  rpc RequestCheckpoint (CheckpointRequest) returns (CheckpointResponse);
+
+  // Target node notifies controller that it built the image
+  rpc NotifyImageBuilt (ImageBuiltNotification) returns (MigrationAck);
+}
+
+// Sent by the target node to request a pod checkpoint
+message CheckpointRequest {
+  string namespace = 1;       // e.g., "default"
+  string pod_name = 2;        // e.g., "nginx-pod"
+  string container_name = 3;  // e.g., "nginx"
+  string k8s_token = 4;       // Kubelet token for auth
+}
+
+// Returned from the controller with checkpoint path
+message CheckpointResponse {
+  string checkpoint_tar_path = 1; // e.g., /mnt/nfs/checkpoints/...
+  string message = 2;             // Optional message
+  bool success = 3;               // Success flag
+}
+
+// Sent by target node after successfully building container image
+message ImageBuiltNotification {
+  string image_name = 1;     // e.g., nginx-restored
+  string namespace = 2;      // e.g., "default"
+  string pod_name = 3;       // e.g., "nginx-pod"
+  string yaml_manifest = 4;  // (optional) contents of new pod YAML
+}
+
+// Acknowledgement response
+message MigrationAck {
+  bool success = 1;
+  string message = 2;
+}
+
