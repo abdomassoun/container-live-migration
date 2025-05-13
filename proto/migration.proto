@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package migration;
 
-option go_package = "container-migration/pb";
+option go_package = "github.com/abdomassoun/container-live-migration/pb";
 
 // Migration coordination service
 service MigrationService {

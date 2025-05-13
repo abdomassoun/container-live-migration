@@ -298,7 +298,7 @@ const file_migration_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage2\xb4\x01\n" +
 	"\x10MigrationService\x12P\n" +
 	"\x11RequestCheckpoint\x12\x1c.migration.CheckpointRequest\x1a\x1d.migration.CheckpointResponse\x12N\n" +
-	"\x10NotifyImageBuilt\x12!.migration.ImageBuiltNotification\x1a\x17.migration.MigrationAckB\x18Z\x16container-migration/pbb\x06proto3"
+	"\x10NotifyImageBuilt\x12!.migration.ImageBuiltNotification\x1a\x17.migration.MigrationAckB4Z2github.com/abdomassoun/container-live-migration/pbb\x06proto3"
 
 var (
 	file_migration_proto_rawDescOnce sync.Once
