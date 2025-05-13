@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
-	// "os"
 	"os/exec"
+	"strings"
 
 	pb "github.com/abdomassoun/container-live-migration/pb"
-
 	"google.golang.org/grpc"
 )
 
@@ -21,7 +21,7 @@ type server struct {
 func (s *server) RequestCheckpoint(ctx context.Context, req *pb.CheckpointRequest) (*pb.CheckpointResponse, error) {
 	url := fmt.Sprintf("https://192.168.122.102:10250/checkpoint/%s/%s/%s", req.Namespace, req.PodName, req.ContainerName)
 
-	cmd := exec.Command("curl", "-k", "-X", "POST",
+	cmd := exec.Command("curl", "-sS", "-k", "-X", "POST",
 		"-H", "Authorization: Bearer "+s.k8sToken, url)
 
 	out, err := cmd.CombinedOutput()
@@ -32,37 +32,42 @@ func (s *server) RequestCheckpoint(ctx context.Context, req *pb.CheckpointReques
 		}, nil
 	}
 
-    // Parse the JSON response
-    var response struct {
-        Items []string `json:"items"`
-    }
-    if err := json.Unmarshal(out, &response); err != nil {
-        return &pb.CheckpointResponse{
-            Success: false,
-            Message: fmt.Sprintf("Error parsing JSON response: %v", err),
-        }, nil
-    }
+	// Parse the JSON response
+	var response struct {
+		Items []string `json:"items"`
+	}
 
-    // Extract the filename from the first item
-    if len(response.Items) == 0 {
-        return &pb.CheckpointResponse{
-            Success: false,
-            Message: "No checkpoint files found in the response",
-        }, nil
-    }
-    filename := filepath.Base(response.Items[0])
+	fmt.Println("Raw curl output:\n", string(out))
+	
+	if err := json.Unmarshal(out, &response); err != nil {
+		return &pb.CheckpointResponse{
+			Success: false,
+			Message: fmt.Sprintf("Error parsing JSON response: %v\nRaw output: %s", err, string(out)),
+		}, nil
+	}
 
-    return &pb.CheckpointResponse{
-        Success: true,
-        Message: "Checkpoint triggered successfully",
-        CheckpointTarPath: filename,
-    }, nil
+	if len(response.Items) == 0 {
+		return &pb.CheckpointResponse{
+			Success: false,
+			Message: "No checkpoint files found in the response",
+		}, nil
+	}
+
+	// Extract just the filename
+	parts := strings.Split(response.Items[0], "/")
+	filename := parts[len(parts)-1]
+
+	return &pb.CheckpointResponse{
+		Success:           true,
+		Message:           "Checkpoint triggered successfully",
+		CheckpointTarPath: filename,
+	}, nil
 }
 
 func (s *server) NotifyImageBuilt(ctx context.Context, in *pb.ImageBuiltNotification) (*pb.MigrationAck, error) {
 	pod := in.GetPodName()
 	ns := in.GetNamespace()
-	yaml := in.GetYamlManifest()
+	yamlPath := "nginx-pod.yaml" 
 
 	delCmd := exec.Command("kubectl", "delete", "pod", pod, "-n", ns)
 	if out, err := delCmd.CombinedOutput(); err != nil {
@@ -72,7 +77,7 @@ func (s *server) NotifyImageBuilt(ctx context.Context, in *pb.ImageBuiltNotifica
 		}, nil
 	}
 
-	applyCmd := exec.Command("kubectl", "apply", "-f", yaml)
+	applyCmd := exec.Command("kubectl", "apply", "-f", yamlPath)
 	if out, err := applyCmd.CombinedOutput(); err != nil {
 		return &pb.MigrationAck{
 			Success: false,
