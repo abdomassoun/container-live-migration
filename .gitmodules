@@ -1,3 +1,3 @@
 [submodule "k8s-checkpoint-access"]
 	path = k8s-checkpoint-access
-	url = git@github.com:abdomassoun/k8s-checkpoint-access.git
+	url = https://github.com/abdomassoun/k8s-checkpoint-access.git
