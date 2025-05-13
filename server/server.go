@@ -32,11 +32,31 @@ func (s *server) RequestCheckpoint(ctx context.Context, req *pb.CheckpointReques
 		}, nil
 	}
 
-	return &pb.CheckpointResponse{
-		Success: true,
-		Message: "Checkpoint triggered successfully",
-		CheckpointTarPath: string(out),
-	}, nil
+    // Parse the JSON response
+    var response struct {
+        Items []string `json:"items"`
+    }
+    if err := json.Unmarshal(out, &response); err != nil {
+        return &pb.CheckpointResponse{
+            Success: false,
+            Message: fmt.Sprintf("Error parsing JSON response: %v", err),
+        }, nil
+    }
+
+    // Extract the filename from the first item
+    if len(response.Items) == 0 {
+        return &pb.CheckpointResponse{
+            Success: false,
+            Message: "No checkpoint files found in the response",
+        }, nil
+    }
+    filename := filepath.Base(response.Items[0])
+
+    return &pb.CheckpointResponse{
+        Success: true,
+        Message: "Checkpoint triggered successfully",
+        CheckpointTarPath: filename,
+    }, nil
 }
 
 func (s *server) NotifyImageBuilt(ctx context.Context, in *pb.ImageBuiltNotification) (*pb.MigrationAck, error) {
@@ -67,18 +87,7 @@ func (s *server) NotifyImageBuilt(ctx context.Context, in *pb.ImageBuiltNotifica
 }
 
 func initK8sCheckpointAccess() (string, error) {
-	// 1. git clone
-	if _, err := exec.Command("git", "clone", "https://github.com/abdomassoun/k8s-checkpoint-access.git").CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to clone repo: %v", err)
-	}
-
-	// 2. helm install
-	if out, err := exec.Command("helm", "install", "checkpoint-access", "./k8s-checkpoint-access",
-		"--namespace", "kube-system", "--create-namespace").CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to install helm chart: %v\nOutput: %s", err, out)
-	}
-
-	// 3. get token
+	
 	out, err := exec.Command("kubectl", "-n", "kube-system", "create", "token", "checkpoint-sa", "--duration=3h").Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to create token: %v", err)
